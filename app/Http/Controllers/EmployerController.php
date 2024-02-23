@@ -24,11 +24,8 @@ class EmployerController extends Controller
         if($request->input('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($query) use ($searchTerm) {
-                $query->where('first_name', 'ilike', '%' . $searchTerm . '%')
-                      ->orWhere('last_name', 'ilike', '%' . $searchTerm . '%')
-                      ->orWhere('telephone', 'ilike', '%' . $searchTerm . '%')
-                      ->orWhere('email', 'ilike', '%' . $searchTerm . '%')
-                      ->orWhere('address', 'ilike', '%' . $searchTerm . '%');
+                $query->whereRaw('LOWER(first_name) LIKE ?', ['%' . strtolower($searchTerm) . '%'])
+                ->orWhereRaw('LOWER(last_name) LIKE ?', ['%' . strtolower($searchTerm) . '%']);
             });
         }
         

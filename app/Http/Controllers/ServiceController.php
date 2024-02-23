@@ -16,8 +16,8 @@ class ServiceController extends Controller
         if($request->input('search')) {
             $searchTerm = $request->input('search');
             $query->where(function ($query) use ($searchTerm) {
-                $query->where('name', 'ilike', '%' . $searchTerm . '%')
-                      ->orWhere('sort_name', 'ilike', '%' . $searchTerm . '%');
+                $query->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($searchTerm) . '%'])
+                    ->orWhereRaw('LOWER(sort_name) LIKE ?', ['%' . strtolower($searchTerm) . '%']);
             });
         }
         return $query->paginate($perPage);
