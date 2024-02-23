@@ -6,6 +6,8 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\EmployerController;
+use App\Http\Controllers\ScheduleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +31,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/clients', [ClientController::class, 'save']);
     Route::delete('/clients/{client}', [ClientController::class, 'delete']);
 
+    Route::get('/employers', [EmployerController::class, 'index']);
+    Route::get('/all-employers', [EmployerController::class, 'getAllEmployers']);
+    Route::post('/employers', [EmployerController::class, 'save']);
+    Route::delete('/employers/{employer}', [EmployerController::class, 'delete']);
+
     Route::get('/services', [ServiceController::class, 'index']);
     Route::get('/all-services', [ServiceController::class, 'getAllServices']);
     Route::post('/services', [ServiceController::class, 'save']);
@@ -42,5 +49,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::get('/monthly-bookings', [BookingController::class, 'monthlyBookings']);
     Route::post('/bookings', [BookingController::class, 'save']);
+    Route::post('/get-available-employers', [BookingController::class, 'getAvailableEmployers']);
     Route::delete('/bookings/{booking}', [BookingController::class, 'delete']);
+
+    Route::post('/schedule', [ScheduleController::class, 'save']);
+    Route::get('/schedule/{employer}', [ScheduleController::class, 'getByEmployer']);
 });

@@ -11,7 +11,16 @@ class ServiceController extends Controller
         $orderBy = $request->input('sortField') ?? 'id';
         $order = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
         $perPage = $request->input('perPage') ?? 10;
-        return Service::orderBy($orderBy, $order)->paginate($perPage);
+        $query = Service::orderBy($orderBy, $order);
+
+        if($request->input('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function ($query) use ($searchTerm) {
+                $query->where('name', 'ilike', '%' . $searchTerm . '%')
+                      ->orWhere('sort_name', 'ilike', '%' . $searchTerm . '%');
+            });
+        }
+        return $query->paginate($perPage);
     }
 
     public function save (Request $request) {

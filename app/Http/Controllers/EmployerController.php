@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Client;
+use App\Models\Employer;
 
-class ClientController extends Controller
+class EmployerController extends Controller
 {
     public function index (Request $request) {
         $order = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
@@ -13,7 +13,7 @@ class ClientController extends Controller
 
         $orderBy = $request->input('sortField');
 
-        $query = new Client();
+        $query = new Employer();
 
         if ($orderBy) {
             $query = $query->orderBy($orderBy, $order);
@@ -31,28 +31,29 @@ class ClientController extends Controller
                       ->orWhere('address', 'ilike', '%' . $searchTerm . '%');
             });
         }
+        
         return $query->paginate($perPage);
     }
 
-    public function getAllClients () {
-        return Client::all();
+    public function getAllEmployers () {
+        return Employer::all();
     }
 
     public function save (Request $request) {
-        $client = Client::updateOrCreate(
+        $employer = Employer::updateOrCreate(
             ['id' => $request->input('id')],
             $request->all()
         );
 
-        return $client;
+        return $employer;
     }
 
-    public function delete (Client $client) {
-        return $client->delete();
+    public function delete (Employer $employer) {
+        return $employer->delete();
     }
     
-    public function getStats (Client $client) {
-        $history = $client->bookings()->with('services')->get()->sortByDesc('date');
+    public function getStats (Employer $employer) {
+        $history = $employer->bookings()->with('services')->get()->sortByDesc('date');
         $bookingsCount = $history->count();
 
         return [
