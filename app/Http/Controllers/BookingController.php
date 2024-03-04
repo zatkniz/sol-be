@@ -18,7 +18,7 @@ class BookingController extends Controller
     }
 
     public function monthlyBookings (Request $request) {
-        return Booking::with([ 'client', 'user', 'services' ])->get();
+        return Booking::with([ 'client', 'user', 'services', 'employer' ])->get();
     }
 
     public function getAvailableEmployers (Request $request) {

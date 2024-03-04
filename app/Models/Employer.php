@@ -15,6 +15,7 @@ class Employer extends Model
         'phone',
         'hiring_date',
         'firing_date',
+        'color'
     ];
 
     public function bookings()
