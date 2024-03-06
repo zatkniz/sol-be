@@ -22,4 +22,9 @@ class Employer extends Model
     {
         return $this->hasMany(Booking::class);
     }
+
+    public function schedule()
+    {
+        return $this->hasMany(Schedule::class);
+    }
 }

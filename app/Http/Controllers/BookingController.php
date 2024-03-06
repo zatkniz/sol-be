@@ -18,7 +18,14 @@ class BookingController extends Controller
     }
 
     public function monthlyBookings (Request $request) {
-        return Booking::with([ 'client', 'user', 'services', 'employer' ])->get();
+        $dateStart = Carbon::parse($request->input('start'), 'UTC')->tz('Europe/Athens');
+        $dateEnd = Carbon::parse($request->input('end'), 'UTC')->tz('Europe/Athens');
+        
+        return Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
+                            $query->whereBetween('date', [$dateStart, $dateEnd]);
+                        }])
+                        ->whereBetween('date', [$dateStart, $dateEnd])
+                        ->get();
     }
 
     public function getAvailableEmployers (Request $request) {
@@ -81,6 +88,7 @@ class BookingController extends Controller
                 'date' => $newDate,
                 'time' => $time->format('H:i'),
                 'user_id' => Auth()->user()->id,
+                'requested' => $request->input('requested')
             ]
         );
 
