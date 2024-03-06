@@ -21,11 +21,18 @@ class BookingController extends Controller
         $dateStart = Carbon::parse($request->input('start'), 'UTC')->tz('Europe/Athens');
         $dateEnd = Carbon::parse($request->input('end'), 'UTC')->tz('Europe/Athens');
         
-        return Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
+        $bookings = Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
                             $query->whereBetween('date', [$dateStart, $dateEnd]);
                         }])
                         ->whereBetween('date', [$dateStart, $dateEnd])
                         ->get();
+
+        $schedules = Schedule::whereBetween('date', [$dateStart, $dateEnd])->with('employer')->get();
+
+        return [
+            'bookings' => $bookings,
+            'schedules' => $schedules
+        ];
     }
 
     public function getAvailableEmployers (Request $request) {
