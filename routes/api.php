@@ -40,6 +40,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/all-services', [ServiceController::class, 'getAllServices']);
     Route::post('/services', [ServiceController::class, 'save']);
     Route::delete('/services/{service}', [ServiceController::class, 'delete']);
+    Route::post('/services-order', [ServiceController::class, 'reorder']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/all-users', [UserController::class, 'getAllUsers']);
