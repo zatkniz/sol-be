@@ -25,9 +25,15 @@ class BookingController extends Controller
                             $query->whereBetween('date', [$dateStart, $dateEnd]);
                         }])
                         ->whereBetween('date', [$dateStart, $dateEnd])
+                        ->join('employers', 'bookings.employer_id', '=', 'employers.id')
+                        ->orderBy('employers.order', 'asc')
                         ->get();
 
-        $schedules = Schedule::whereBetween('date', [$dateStart, $dateEnd])->with('employer')->get();
+        $schedules = Schedule::whereBetween('date', [$dateStart, $dateEnd])
+                                ->join('employers', 'schedules.employer_id', '=', 'employers.id')
+                                ->with('employer')
+                                ->orderBy('employers.order', 'asc')
+                                ->get();
 
         return [
             'bookings' => $bookings,

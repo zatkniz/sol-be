@@ -15,11 +15,13 @@ class EmployerController extends Controller
 
         $query = new Employer();
 
-        if ($orderBy) {
-            $query = $query->orderBy($orderBy, $order);
-        } else {
-            $query = $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc');
-        }
+        // if ($orderBy) {
+        //     $query = $query->orderBy($orderBy, $order);
+        // } else {
+        //     $query = $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc');
+        // }
+
+        $query->orderBy('order', 'asc');
 
         if($request->input('search')) {
             $searchTerm = $request->input('search');
@@ -29,11 +31,19 @@ class EmployerController extends Controller
             });
         }
         
-        return $query->paginate($perPage);
+        return $query->orderBy('order', 'asc')->paginate(1000);
+    }
+
+    public function reorder (Request $request) {
+        $services = collect($request->all())->map(function($service, $index){
+            return Employer::where('id', $service['id'])->update(['order' => $index]);
+        });
+
+        return $services;
     }
 
     public function getAllEmployers () {
-        return Employer::all();
+        return Employer::orderBy('order', 'asc')->get();
     }
 
     public function save (Request $request) {

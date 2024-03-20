@@ -21,7 +21,8 @@ class ServiceController extends Controller
                     ->orWhereRaw('LOWER(sort_name) LIKE ?', ['%' . strtolower($searchTerm) . '%']);
             });
         }
-        return $query->paginate(-1);
+
+        return $query->paginate(1000);
     }
 
     public function save (Request $request) {

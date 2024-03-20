@@ -35,6 +35,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/all-employers', [EmployerController::class, 'getAllEmployers']);
     Route::post('/employers', [EmployerController::class, 'save']);
     Route::delete('/employers/{employer}', [EmployerController::class, 'delete']);
+    Route::post('/employers-order', [EmployerController::class, 'reorder']);
 
     Route::get('/services', [ServiceController::class, 'index']);
     Route::get('/all-services', [ServiceController::class, 'getAllServices']);
