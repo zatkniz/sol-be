@@ -18,21 +18,17 @@ class BookingController extends Controller
     }
 
     public function monthlyBookings (Request $request) {
-        $dateStart = Carbon::parse($request->input('start'), 'UTC')->tz('Europe/Athens');
-        $dateEnd = Carbon::parse($request->input('end'), 'UTC')->tz('Europe/Athens');
+        $dateStart = Carbon::parse($request->input('start'));
+        $dateEnd = Carbon::parse($request->input('end'));
         
         $bookings = Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
                             $query->whereBetween('date', [$dateStart, $dateEnd]);
                         }])
                         ->whereBetween('date', [$dateStart, $dateEnd])
-                        ->join('employers', 'bookings.employer_id', '=', 'employers.id')
-                        ->orderBy('employers.order', 'asc')
                         ->get();
 
         $schedules = Schedule::whereBetween('date', [$dateStart, $dateEnd])
-                                ->join('employers', 'schedules.employer_id', '=', 'employers.id')
                                 ->with('employer')
-                                ->orderBy('employers.order', 'asc')
                                 ->get();
 
         return [
@@ -45,8 +41,8 @@ class BookingController extends Controller
         $query = new Employer();
 
         return $query->get()->map(function($employer) use ($request) {
-            $time = Carbon::parse($request->input('time'), 'UTC')->tz('Europe/Athens');
-            $date = Carbon::parse($request->input('date'), 'UTC')->tz('Europe/Athens');
+            $time = Carbon::parse($request->input('time'));
+            $date = Carbon::parse($request->input('date'));
 
             // Assuming $duration is a string in the format HH:mm:ss (00:59:00 in this case)
             $duration = $request->input('duration');
@@ -87,8 +83,8 @@ class BookingController extends Controller
         $client = $request->input('client');
 
         $date = $request->input('date');
-        $newDate = Carbon::parse($date, 'UTC')->tz('Europe/Athens');
-        $time = Carbon::parse($request->input('time'), 'UTC')->tz('Europe/Athens');
+        $newDate = Carbon::parse($date);
+        $time = Carbon::parse($request->input('time'));
 
         $booking = Booking::updateOrCreate(
             ['id' => $request->input('id')],
