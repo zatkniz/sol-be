@@ -30,6 +30,22 @@ class ScheduleController extends Controller
                     'time_end' => $day['time_end'],
                 ]
             );
+
+            if (!isset($day['time_start_second']) || !isset($day['time_end_second'])) {
+                return;
+            }
+
+            // Schedule::updateOrCreate(
+            //     [
+            //         'id' => $day['id'] ?? null,
+            //     ],
+            //     [
+            //         'employer_id' => $employer,
+            //         'date' => $day['date'],
+            //         'time_start' => $day['time_start_second'],
+            //         'time_end' => $day['time_end_second'],
+            //     ]
+            // );
         });
 
         return $days;

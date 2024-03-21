@@ -27,7 +27,7 @@ class UserController extends Controller
         return User::all();
     }
 
-    public function delete (User $user) {
-        return $user->delete();
+    public function delete($user) {
+        return User::where('id', $user)->delete();
     }
 }
