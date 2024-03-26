@@ -93,6 +93,7 @@ class BookingController extends Controller
                 'cost' => $request->input('cost'),
                 'duration' => $request->input('duration'),
                 'comments' => $request->input('comments'),
+                'comments_second' => $request->input('comments_second'),
                 'employer_id' => $request->input('employer_id'),
                 'date' => $newDate,
                 'time' => $time->format('H:i'),
