@@ -23,7 +23,10 @@ class BookingController extends Controller
         
         $bookings = Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
                             $query->whereBetween('date', [$dateStart, $dateEnd]);
-                        }])
+                        },
+                        'employerSecondary.schedule' => function ($query) use ($dateStart, $dateEnd) {
+                            $query->whereBetween('date', [$dateStart, $dateEnd]);
+                        } ])
                         ->whereBetween('date', [$dateStart, $dateEnd])
                         ->get();
 
@@ -95,6 +98,8 @@ class BookingController extends Controller
                 'comments' => $request->input('comments'),
                 'comments_second' => $request->input('comments_second'),
                 'employer_id' => $request->input('employer_id'),
+                'secondary_employer_id' => $request->input('secondary_employer_id'),
+                'requested_secondary' => $request->input('requested_secondary'),
                 'date' => $newDate,
                 'time' => $time->format('H:i'),
                 'user_id' => Auth()->user()->id,

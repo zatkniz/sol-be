@@ -9,7 +9,7 @@ class Booking extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['client_id', 'user_id', 'duration', 'cost', 'date', 'time', 'comments', 'comments_second', 'employer_id', 'requested'];
+    protected $fillable = ['client_id', 'user_id', 'duration', 'cost', 'date', 'time', 'comments', 'comments_second', 'employer_id', 'requested', 'secondary_employer_id', 'requested_secondary'];
 
     protected $casts = [
         'date' => 'datetime',
@@ -38,5 +38,10 @@ class Booking extends Model
     public function employer()
     {
         return $this->belongsTo(Employer::class);
+    }
+
+    public function employerSecondary()
+    {
+        return $this->belongsTo(Employer::class, 'secondary_employer_id');
     }
 }
