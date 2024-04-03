@@ -5,6 +5,7 @@ use App\Models\Employer;
 
 use Illuminate\Http\Request;
 use App\Models\Booking;
+use App\Models\BookingService;
 use App\Models\Schedule;
 use Carbon\Carbon;
 
@@ -14,14 +15,14 @@ class BookingController extends Controller
         $orderBy = $request->input('sortField') ?? 'id';
         $order = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
         $perPage = $request->input('perPage') ?? 10;
-        return Booking::with([ 'client', 'user', 'services', 'employer'])->orderBy($orderBy, $order)->paginate($perPage);
+        return Booking::with([ 'client', 'user', 'services', 'employer', 'bookingServices'])->orderBy($orderBy, $order)->paginate($perPage);
     }
 
     public function monthlyBookings (Request $request) {
         $dateStart = Carbon::parse($request->input('start'));
         $dateEnd = Carbon::parse($request->input('end'));
         
-        $bookings = Booking::with(['client', 'user', 'services', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
+        $bookings = Booking::with(['client', 'user', 'services', 'bookingServices.service', 'employer.schedule' => function ($query) use ($dateStart, $dateEnd) {
                             $query->whereBetween('date', [$dateStart, $dateEnd]);
                         },
                         'employerSecondary.schedule' => function ($query) use ($dateStart, $dateEnd) {
@@ -95,6 +96,7 @@ class BookingController extends Controller
                 'client_id' => $client['id'],
                 'cost' => $request->input('cost'),
                 'duration' => $request->input('duration'),
+                'secondary_duration' => $request->input('secondary_duration'),
                 'comments' => $request->input('comments'),
                 'comments_second' => $request->input('comments_second'),
                 'employer_id' => $request->input('employer_id'),
@@ -108,8 +110,19 @@ class BookingController extends Controller
         );
 
         $services = $request->input('services');
+        $employer_id = $request->input('employer_id');
+        $services_second = $request->input('services_second') ?? [];
+        $secondary_employer_id = $request->input('secondary_employer_id');
 
-        $booking->services()->sync($services);
+        BookingService::where('booking_id', $booking->id)->delete();
+
+        collect($services)->each(function ($service) use ($employer_id, $booking) {
+            $booking->services()->attach($service, ['employer_id' => $employer_id]);
+        });
+
+        collect($services_second)->each(function ($service) use ($secondary_employer_id, $booking) {
+            $booking->services()->attach($service, ['employer_id' => $secondary_employer_id]);
+        });
 
         return $booking;
     }
