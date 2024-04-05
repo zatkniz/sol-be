@@ -56,4 +56,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('/schedule', [ScheduleController::class, 'save']);
     Route::get('/schedule/{employer}', [ScheduleController::class, 'getByEmployer']);
+    Route::get('/schedule', [ScheduleController::class, 'getAll']);
 });

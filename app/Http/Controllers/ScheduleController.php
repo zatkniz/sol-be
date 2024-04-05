@@ -13,7 +13,7 @@ class ScheduleController extends Controller
         $days = collect($request->input('days'));
 
         $days->each(function ($day) use ($employer) {
-            if (!$day['time_start'] || !$day['time_end']) {
+            if ((!$day['time_start'] || !$day['time_end']) && !$day['repo'] && !$day['allowance']) {
                 return;
             }
 
@@ -28,6 +28,8 @@ class ScheduleController extends Controller
                     'date' => $day['date'],
                     'time_start' => $day['time_start'],
                     'time_end' => $day['time_end'],
+                    'repo' => $day['repo'],
+                    'allowance' => $day['allowance'],
                 ]
             );
 
@@ -65,6 +67,20 @@ class ScheduleController extends Controller
         if(isset($employer)) {
             $query->where('employer_id', $employer);
         }
+
+        return $query->get();
+    }
+
+    public function getAll (Request $request) {
+
+        $date = $request->input('date');
+        $carbonDate = Carbon::createFromFormat('m/Y', $date);
+        $month = $carbonDate->month;
+        $year = $carbonDate->year;
+
+        $query = Schedule::with('employer')
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year);
 
         return $query->get();
     }
