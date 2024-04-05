@@ -52,7 +52,7 @@ class ClientController extends Controller
     }
     
     public function getStats (Client $client) {
-        $history = $client->bookings()->with('services')->get()->sortByDesc('date');
+        $history = $client->bookings()->with(['client', 'user', 'services', 'employer', 'bookingServices.service'])->get()->sortByDesc('date');
         $bookingsCount = $history->count();
 
         return [
