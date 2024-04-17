@@ -9,10 +9,15 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'duration', 'cost', 'sort_name'];
+    protected $fillable = ['name', 'duration', 'cost', 'sort_name', 'is_special'];
 
     public function bookings()
     {
         return $this->belongsToMany(Booking::class);
+    }
+
+    public function getIsSpecialAttribute($value)
+    {
+        return (bool) $value;
     }
 }
