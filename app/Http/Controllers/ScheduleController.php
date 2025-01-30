@@ -56,7 +56,7 @@ class ScheduleController extends Controller
     public function getByEmployer (Request $request, $employer) {
 
         $date = $request->input('date');
-        $carbonDate = Carbon::createFromFormat('m/Y', $date);
+        $carbonDate = Carbon::createFromFormat('d/m/Y', '01/' . $date);
         $month = $carbonDate->month;
         $year = $carbonDate->year;
 
