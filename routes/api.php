@@ -60,6 +60,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/schedule', [ScheduleController::class, 'getAll']);
 
     Route::get('/statistics', [StatsController::class, 'index']);
+    Route::get('/statistics/charts', [StatsController::class, 'chartData']);
+    Route::get('/statistics/tables', [StatsController::class, 'tableData']);
 });
 
 // Test endpoint (remove in production)

@@ -160,6 +160,40 @@ class StatsController extends Controller
         
         $averageDurationFormatted = $averageDuration ? gmdate('H:i', $averageDuration) : '0:00';
         
+        // New Clients - Clients created in current period
+        $newClients = Client::whereBetween('created_at', [$currentStart, $currentEnd])->count();
+        
+        // Previous period new clients
+        $previousNewClients = Client::whereBetween('created_at', [$previousStart, $previousEnd])->count();
+        
+        // New clients change
+        $newClientsChange = 0;
+        if ($previousNewClients > 0) {
+            $newClientsChange = (($newClients - $previousNewClients) / $previousNewClients) * 100;
+        }
+        
+        // Completion Rate - Percentage of bookings completed (past dates are considered completed)
+        $today = Carbon::now();
+        $totalBookingsForCompletion = Booking::whereBetween('date', [$currentStart, $currentEnd])->count();
+        
+        // Consider bookings with past dates as completed
+        $completedBookings = Booking::whereBetween('date', [$currentStart, $currentEnd])
+            ->where('date', '<=', $today->format('Y-m-d'))->count();
+        
+        $completionRate = $totalBookingsForCompletion > 0 ? 
+            ($completedBookings / $totalBookingsForCompletion) * 100 : 0;
+        
+        // Previous period completion rate
+        $previousTotalBookings = Booking::whereBetween('date', [$previousStart, $previousEnd])->count();
+        $previousCompletedBookings = Booking::whereBetween('date', [$previousStart, $previousEnd])
+            ->where('date', '<=', $today->format('Y-m-d'))->count();
+        
+        $previousCompletionRate = $previousTotalBookings > 0 ? 
+            ($previousCompletedBookings / $previousTotalBookings) * 100 : 0;
+        
+        $completionRateChange = $previousCompletionRate > 0 ? 
+            (($completionRate - $previousCompletionRate) / $previousCompletionRate) * 100 : 0;
+        
         return response()->json([
             'filter' => $filter,
             'period_label' => $this->getPeriodLabel($filter),
@@ -204,6 +238,18 @@ class StatsController extends Controller
                 'change' => $comparisonLabel,
                 'changeType' => 'positive',
                 'name' => 'Μέση Διάρκεια'
+            ],
+            'new_clients' => [
+                'value' => number_format($newClients),
+                'change' => ($newClientsChange >= 0 ? '+' : '') . number_format($newClientsChange, 2) . '%',
+                'changeType' => $newClientsChange >= 0 ? 'positive' : 'negative',
+                'name' => 'Νέοι Πελάτες'
+            ],
+            'completion_rate' => [
+                'value' => number_format($completionRate, 1) . '%',
+                'change' => ($completionRateChange >= 0 ? '+' : '') . number_format($completionRateChange, 1) . '%',
+                'changeType' => $completionRateChange >= 0 ? 'positive' : 'negative',
+                'name' => 'Ποσοστό Ολοκλήρωσης'
             ]
         ]);
     }
@@ -217,5 +263,166 @@ class StatsController extends Controller
             case 'this_month': 
             default: return 'Αυτός ο Μήνας';
         }
+    }
+    
+    /**
+     * Get chart data for revenue trend
+     */
+    public function chartData(Request $request)
+    {
+        $filter = $request->get('filter', 'this_month');
+        
+        // Get the appropriate date range for charts
+        switch($filter) {
+            case 'this_year':
+                $months = collect();
+                for($i = 11; $i >= 0; $i--) {
+                    $month = Carbon::now()->subMonths($i);
+                    $monthStart = $month->copy()->startOfMonth();
+                    $monthEnd = $month->copy()->endOfMonth();
+                    
+                    $revenue = Booking::whereBetween('date', [$monthStart, $monthEnd])
+                        ->sum('cost');
+                    $bookings = Booking::whereBetween('date', [$monthStart, $monthEnd])
+                        ->count();
+                        
+                    $months->push([
+                        'label' => $month->locale('el')->format('M'),
+                        'revenue' => (float) $revenue,
+                        'bookings' => $bookings
+                    ]);
+                }
+                break;
+                
+            case 'last_3_months':
+                $months = collect();
+                for($i = 2; $i >= 0; $i--) {
+                    $month = Carbon::now()->subMonths($i);
+                    $monthStart = $month->copy()->startOfMonth();
+                    $monthEnd = $month->copy()->endOfMonth();
+                    
+                    $revenue = Booking::whereBetween('date', [$monthStart, $monthEnd])
+                        ->sum('cost');
+                    $bookings = Booking::whereBetween('date', [$monthStart, $monthEnd])
+                        ->count();
+                        
+                    $months->push([
+                        'label' => $month->locale('el')->format('M'),
+                        'revenue' => (float) $revenue,
+                        'bookings' => $bookings
+                    ]);
+                }
+                break;
+                
+            default: // this_month, last_month
+                $startDate = $filter === 'last_month' ? 
+                    Carbon::now()->subMonth()->startOfMonth() : 
+                    Carbon::now()->startOfMonth();
+                    
+                $days = collect();
+                $currentDate = $startDate->copy();
+                $endDate = $startDate->copy()->endOfMonth();
+                
+                while($currentDate->lte($endDate)) {
+                    $dayStart = $currentDate->copy()->startOfDay();
+                    $dayEnd = $currentDate->copy()->endOfDay();
+                    
+                    $revenue = Booking::whereBetween('date', [$dayStart, $dayEnd])
+                        ->sum('cost');
+                    $bookings = Booking::whereBetween('date', [$dayStart, $dayEnd])
+                        ->count();
+                        
+                    $days->push([
+                        'label' => $currentDate->format('d'),
+                        'revenue' => (float) $revenue,
+                        'bookings' => $bookings
+                    ]);
+                    
+                    $currentDate->addDay();
+                }
+                $months = $days;
+        }
+        
+        // Get services distribution
+        $servicesData = Service::leftJoin('booking_service', 'services.id', '=', 'booking_service.service_id')
+            ->leftJoin('bookings', 'booking_service.booking_id', '=', 'bookings.id')
+            ->select('services.name', DB::raw('COUNT(booking_service.id) as count'))
+            ->groupBy('services.id', 'services.name')
+            ->orderBy('count', 'desc')
+            ->take(5)
+            ->get();
+        
+        return response()->json([
+            'monthly_data' => $months,
+            'services_distribution' => $servicesData
+        ]);
+    }
+    
+    /**
+     * Get table data for recent bookings and top services
+     */
+    public function tableData(Request $request)
+    {
+        $filter = $request->get('filter', 'this_month');
+        
+        // Get date range for filtering
+        $dates = $this->getDateRangeFromFilter($filter);
+        
+        // Best clients by total spending in the selected period
+        $bestClients = Client::withCount(['bookings as total_bookings' => function ($query) use ($dates) {
+                $query->whereBetween('date', [$dates['current_start'], $dates['current_end']]);
+            }])
+            ->withSum(['bookings as total_spent' => function ($query) use ($dates) {
+                $query->whereBetween('date', [$dates['current_start'], $dates['current_end']]);
+            }], 'cost')
+            ->with(['bookings' => function ($query) use ($dates) {
+                $query->whereBetween('date', [$dates['current_start'], $dates['current_end']])
+                      ->latest('date');
+            }])
+            ->whereHas('bookings', function ($query) use ($dates) {
+                $query->whereBetween('date', [$dates['current_start'], $dates['current_end']]);
+            })
+            ->orderBy('total_spent', 'desc')
+            ->take(5)
+            ->get()
+            ->map(function($client) {
+                $lastBooking = $client->bookings->first();
+                return [
+                    'id' => $client->id,
+                    'client_name' => $client->full_name,
+                    'phone' => $client->telephone,
+                    'total_bookings' => $client->total_bookings,
+                    'total_spent' => number_format($client->total_spent ?? 0, 2),
+                    'last_booking_date' => $lastBooking ? $lastBooking->date->toISOString() : null
+                ];
+            });
+        
+        // Top services performance
+        $topServices = Service::leftJoin('booking_service', 'services.id', '=', 'booking_service.service_id')
+            ->leftJoin('bookings', 'booking_service.booking_id', '=', 'bookings.id')
+            ->whereBetween('bookings.date', [$dates['current_start'], $dates['current_end']])
+            ->select(
+                'services.id',
+                'services.name',
+                DB::raw('COUNT(booking_service.id) as bookings_count'),
+                DB::raw('SUM(bookings.cost) as total_revenue')
+            )
+            ->groupBy('services.id', 'services.name')
+            ->orderBy('total_revenue', 'desc')
+            ->take(5)
+            ->get()
+            ->map(function($service) {
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'bookings_count' => $service->bookings_count,
+                    'total_revenue' => number_format($service->total_revenue ?? 0, 2)
+                ];
+            });
+        
+        return response()->json([
+            'best_clients' => $bestClients,
+            'top_services' => $topServices
+        ]);
     }
 }
