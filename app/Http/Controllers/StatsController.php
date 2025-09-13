@@ -389,8 +389,10 @@ class StatsController extends Controller
                 $lastBooking = $client->bookings->first();
                 return [
                     'id' => $client->id,
+                    'first_name' => $client->first_name,
+                    'last_name' => $client->last_name,
                     'client_name' => $client->full_name,
-                    'phone' => $client->telephone,
+                    'telephone' => $client->telephone,
                     'total_bookings' => $client->total_bookings,
                     'total_spent' => number_format($client->total_spent ?? 0, 2),
                     'last_booking_date' => $lastBooking ? $lastBooking->date->toISOString() : null
@@ -405,7 +407,8 @@ class StatsController extends Controller
                 'services.id',
                 'services.name',
                 DB::raw('COUNT(booking_service.id) as bookings_count'),
-                DB::raw('SUM(bookings.cost) as total_revenue')
+                DB::raw('SUM(bookings.cost) as total_revenue'),
+                DB::raw('AVG(bookings.cost) as average_cost')
             )
             ->groupBy('services.id', 'services.name')
             ->orderBy('total_revenue', 'desc')
@@ -416,7 +419,8 @@ class StatsController extends Controller
                     'id' => $service->id,
                     'name' => $service->name,
                     'bookings_count' => $service->bookings_count,
-                    'total_revenue' => number_format($service->total_revenue ?? 0, 2)
+                    'total_revenue' => number_format($service->total_revenue ?? 0, 2),
+                    'average_price' => number_format($service->average_cost ?? 0, 2)
                 ];
             });
         
