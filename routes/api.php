@@ -8,6 +8,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\EmployerController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\StatsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,4 +58,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/schedule', [ScheduleController::class, 'save']);
     Route::get('/schedule/{employer}', [ScheduleController::class, 'getByEmployer']);
     Route::get('/schedule', [ScheduleController::class, 'getAll']);
+
+    Route::get('/statistics', [StatsController::class, 'index']);
 });
+
+// Test endpoint (remove in production)
+Route::get('/statistics-test', [StatsController::class, 'index']);
