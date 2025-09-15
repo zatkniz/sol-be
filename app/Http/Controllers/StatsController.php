@@ -18,7 +18,64 @@ class StatsController extends Controller
         // Get filter parameter (default to 'this_month')
         $filter = $request->get('filter', 'this_month');
         
-        // Calculate date ranges based on filter
+        // Handle custom date range
+        if ($filter === 'custom') {
+            $startDate = $request->get('start_date');
+            $endDate = $request->get('end_date');
+            
+            // Validate custom date range
+            if (!$startDate || !$endDate) {
+                return response()->json([
+                    'error' => 'Start date and end date are required for custom filter'
+                ], 400);
+            }
+            
+            try {
+                $currentStart = Carbon::parse($startDate)->startOfDay();
+                $currentEnd = Carbon::parse($endDate)->endOfDay();
+                
+                if ($currentStart->gt($currentEnd)) {
+                    return response()->json([
+                        'error' => 'Start date cannot be after end date'
+                    ], 400);
+                }
+                
+                // Calculate previous period of same duration
+                $daysDiff = $currentStart->diffInDays($currentEnd) + 1;
+                $previousEnd = $currentStart->copy()->subDay();
+                $previousStart = $previousEnd->copy()->subDays($daysDiff - 1);
+                
+                $comparisonLabel = 'σε σχέση με προηγούμενη περίοδο';
+                
+                return $this->calculateStats($currentStart, $currentEnd, $previousStart, $previousEnd, $comparisonLabel, $filter);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'error' => 'Invalid date format'
+                ], 400);
+            }
+        }
+        
+        // Handle all_time filter
+        if ($filter === 'all_time') {
+            // Get the earliest booking date
+            $earliestBooking = Booking::orderBy('date')->first();
+            $currentStart = $earliestBooking ? Carbon::parse($earliestBooking->date) : Carbon::now()->subYear();
+            $currentEnd = Carbon::now()->endOfDay();
+            
+            // For all_time, compare with the first half vs second half of the period
+            $totalDays = $currentStart->diffInDays($currentEnd);
+            $midPoint = $currentStart->copy()->addDays(intval($totalDays / 2));
+            
+            $previousStart = $currentStart;
+            $previousEnd = $midPoint;
+            
+            $comparisonLabel = 'σε σχέση με πρώτο μισό της περιόδου';
+            
+            return $this->calculateStats($currentStart, $currentEnd, $previousStart, $previousEnd, $comparisonLabel, $filter);
+        }
+        
+        // Calculate date ranges based on predefined filter
         $dates = $this->getDateRangeFromFilter($filter);
         $currentStart = $dates['current_start'];
         $currentEnd = $dates['current_end'];
@@ -31,8 +88,25 @@ class StatsController extends Controller
         return $this->calculateStats($currentStart, $currentEnd, $previousStart, $previousEnd, $comparisonLabel, $filter);
     }
     
-    private function getDateRangeFromFilter($filter) 
+    private function getDateRangeFromFilter($filter, $startDate = null, $endDate = null) 
     {
+        // Handle custom date range
+        if ($filter === 'custom' && $startDate && $endDate) {
+            return [
+                'current_start' => Carbon::parse($startDate)->startOfDay(),
+                'current_end' => Carbon::parse($endDate)->endOfDay(),
+            ];
+        }
+        
+        // Handle all_time filter
+        if ($filter === 'all_time') {
+            $earliestBooking = Booking::orderBy('date')->first();
+            return [
+                'current_start' => $earliestBooking ? Carbon::parse($earliestBooking->date) : Carbon::now()->subYear(),
+                'current_end' => Carbon::now()->endOfDay(),
+            ];
+        }
+        
         switch($filter) {
             case 'this_year':
                 return [
@@ -75,6 +149,8 @@ class StatsController extends Controller
             case 'this_year': return 'σε σχέση με πέρυσι';
             case 'last_month': return 'σε σχέση με προηγούμενο μήνα';
             case 'last_3_months': return 'σε σχέση με προηγούμενα 3μήνα';
+            case 'all_time': return 'σε σχέση με πρώτο μισό της περιόδου';
+            case 'custom': return 'σε σχέση με προηγούμενη περίοδο';
             case 'this_month': 
             default: return 'σε σχέση με προηγούμενο μήνα';
         }
@@ -271,8 +347,112 @@ class StatsController extends Controller
     public function chartData(Request $request)
     {
         $filter = $request->get('filter', 'this_month');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
         
         // Get the appropriate date range for charts
+        if ($filter === 'custom' && $startDate && $endDate) {
+            // For custom date range, create monthly breakdowns
+            $start = Carbon::parse($startDate);
+            $end = Carbon::parse($endDate);
+            
+            $data = collect();
+            $current = $start->copy()->startOfMonth();
+            
+            while ($current->lte($end)) {
+                $monthStart = $current->copy()->startOfMonth();
+                $monthEnd = $current->copy()->endOfMonth();
+                
+                // Don't go beyond the end date
+                if ($monthEnd->gt($end)) {
+                    $monthEnd = $end->copy();
+                }
+                
+                $revenue = Booking::whereBetween('date', [$monthStart, $monthEnd])->sum('cost');
+                $bookings = Booking::whereBetween('date', [$monthStart, $monthEnd])->count();
+                
+                $data->push([
+                    'label' => $current->locale('el')->format('M Y'),
+                    'revenue' => (float) $revenue,
+                    'bookings' => $bookings,
+                ]);
+                
+                $current->addMonth();
+            }
+            
+            // Services distribution for custom period
+            $servicesData = Service::withSum(['bookings as revenue' => function ($query) use ($start, $end) {
+                    $query->whereBetween('date', [$start, $end]);
+                }], 'cost')
+                ->withCount(['bookings as booking_count' => function ($query) use ($start, $end) {
+                    $query->whereBetween('date', [$start, $end]);
+                }])
+                ->whereHas('bookings', function ($query) use ($start, $end) {
+                    $query->whereBetween('date', [$start, $end]);
+                })
+                ->orderBy('revenue', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function($service) {
+                    return [
+                        'name' => $service->name,
+                        'value' => (float) ($service->revenue ?? 0),
+                        'bookings' => $service->booking_count ?? 0,
+                    ];
+                });
+            
+            return response()->json([
+                'line_chart' => $data->toArray(),
+                'bar_chart' => $data->toArray(),
+                'pie_chart' => $servicesData->toArray(),
+            ]);
+        }
+        
+        if ($filter === 'all_time') {
+            // For all_time, create yearly breakdowns
+            $earliestBooking = Booking::orderBy('date')->first();
+            $startYear = $earliestBooking ? Carbon::parse($earliestBooking->date)->year : Carbon::now()->subYear()->year;
+            $endYear = Carbon::now()->year;
+            
+            $data = collect();
+            
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                $yearStart = Carbon::createFromDate($year, 1, 1)->startOfYear();
+                $yearEnd = Carbon::createFromDate($year, 12, 31)->endOfYear();
+                
+                $revenue = Booking::whereBetween('date', [$yearStart, $yearEnd])->sum('cost');
+                $bookings = Booking::whereBetween('date', [$yearStart, $yearEnd])->count();
+                
+                $data->push([
+                    'label' => (string) $year,
+                    'revenue' => (float) $revenue,
+                    'bookings' => $bookings,
+                ]);
+            }
+            
+            // Services distribution for all time
+            $servicesData = Service::withSum(['bookings as revenue'], 'cost')
+                ->withCount(['bookings as booking_count'])
+                ->whereHas('bookings')
+                ->orderBy('revenue', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function($service) {
+                    return [
+                        'name' => $service->name,
+                        'value' => (float) ($service->revenue ?? 0),
+                        'bookings' => $service->booking_count ?? 0,
+                    ];
+                });
+            
+            return response()->json([
+                'line_chart' => $data->toArray(),
+                'bar_chart' => $data->toArray(),
+                'pie_chart' => $servicesData->toArray(),
+            ]);
+        }
+        
+        // Existing logic for predefined filters
         switch($filter) {
             case 'this_year':
                 $months = collect();
@@ -364,9 +544,17 @@ class StatsController extends Controller
     public function tableData(Request $request)
     {
         $filter = $request->get('filter', 'this_month');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
         
-        // Get date range for filtering
-        $dates = $this->getDateRangeFromFilter($filter);
+        // Get date range for filtering based on the filter type
+        try {
+            $dates = $this->getDateRangeFromFilter($filter, $startDate, $endDate);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Invalid date range: ' . $e->getMessage()
+            ], 400);
+        }
         
         // Best clients by total spending in the selected period
         $bestClients = Client::withCount(['bookings as total_bookings' => function ($query) use ($dates) {
