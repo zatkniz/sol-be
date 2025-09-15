@@ -9,7 +9,7 @@ class EmployerController extends Controller
 {
     public function index (Request $request) {
         $order = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
-        $perPage = $request->input('perPage') ?? 10;
+        $perPage = 100;
 
         $orderBy = $request->input('sortField');
 
