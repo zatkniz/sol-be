@@ -51,8 +51,29 @@ class ClientController extends Controller
         return $client->delete();
     }
     
-    public function getStats (Client $client) {
-        $history = $client->bookings()->with(['client', 'user', 'services', 'employer', 'bookingServices.service'])->get()->sortByDesc('date');
+    public function getStats (Request $request, Client $client) {
+        $showAllBookings = $request->boolean('showAllBookings', false);
+        
+        $query = $client->bookings()->with(['client', 'user', 'services', 'employer', 'bookingServices.service']);
+        
+        // Apply booking visibility filtering if showAllBookings is false
+        if (!$showAllBookings) {
+            $currentTime = now();
+            
+            $query->where(function ($q) use ($currentTime) {
+                // Always show bookings that came (came = true)
+                $q->where('came', true)
+                  // OR show future bookings (came = false/null AND booking time > current time)
+                  ->orWhere(function ($subQuery) use ($currentTime) {
+                      $subQuery->where(function ($cameQuery) {
+                          $cameQuery->where('came', false)->orWhereNull('came');
+                      })
+                      ->whereRaw("STR_TO_DATE(CONCAT(date, ' ', time), '%Y-%m-%d %H:%i:%s') > ?", [$currentTime]);
+                  });
+            });
+        }
+        
+        $history = $query->get()->sortByDesc('date');
         $bookingsCount = $history->count();
 
         return [

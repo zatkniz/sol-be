@@ -15,7 +15,28 @@ class BookingController extends Controller
         $orderBy = $request->input('sortField') ?? 'id';
         $order = $request->input('sortOrder') === '1' ? 'asc' : 'desc';
         $perPage = $request->input('perPage') ?? 10;
-        return Booking::with([ 'client', 'user', 'services', 'employer', 'bookingServices'])->orderBy($orderBy, $order)->paginate($perPage);
+        $showAllBookings = $request->boolean('showAllBookings', false);
+        
+        $query = Booking::with(['client', 'user', 'services', 'employer', 'bookingServices']);
+        
+        // Apply booking visibility filtering if showAllBookings is false
+        if (!$showAllBookings) {
+            $currentTime = now();
+            
+            $query->where(function ($q) use ($currentTime) {
+                // Always show bookings that came (came = true)
+                $q->where('came', true)
+                  // OR show future bookings (came = false/null AND booking time > current time)
+                  ->orWhere(function ($subQuery) use ($currentTime) {
+                      $subQuery->where(function ($cameQuery) {
+                          $cameQuery->where('came', false)->orWhereNull('came');
+                      })
+                      ->whereRaw("STR_TO_DATE(CONCAT(date, ' ', time), '%Y-%m-%d %H:%i:%s') > ?", [$currentTime]);
+                  });
+            });
+        }
+        
+        return $query->orderBy($orderBy, $order)->paginate($perPage);
     }
 
     public function monthlyBookings (Request $request) {
