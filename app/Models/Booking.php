@@ -22,7 +22,8 @@ class Booking extends Model
         'requested',
         'secondary_employer_id',
         'requested_secondary',
-        'secondary_duration'
+        'secondary_duration',
+        'came'
     ];
 
     protected $casts = [

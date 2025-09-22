@@ -97,6 +97,7 @@ class BookingController extends Controller
                 'cost' => $request->input('cost'),
                 'duration' => $request->input('duration'),
                 'secondary_duration' => $request->input('secondary_duration'),
+                'came' => $request->input('came'),
                 'comments' => $request->input('comments'),
                 'comments_second' => $request->input('comments_second'),
                 'employer_id' => $request->input('employer_id'),
