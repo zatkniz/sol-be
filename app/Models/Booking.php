@@ -28,6 +28,7 @@ class Booking extends Model
 
     protected $casts = [
         'date' => 'datetime',
+        'came' => 'boolean',
     ];
 
     public function client()
