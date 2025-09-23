@@ -63,10 +63,15 @@ class ClientController extends Controller
             $query->where(function ($q) use ($currentTime) {
                 // Always show bookings that came (came = true)
                 $q->where('came', true)
-                  // OR show future bookings (came = false/null AND booking time > current time)
+                  // OR always show bookings that did not come (did_not_came = true)
+                  ->orWhere('did_not_came', true)
+                  // OR show future bookings (came = false/null AND did_not_came = false/null AND booking time > current time)
                   ->orWhere(function ($subQuery) use ($currentTime) {
                       $subQuery->where(function ($cameQuery) {
                           $cameQuery->where('came', false)->orWhereNull('came');
+                      })
+                      ->where(function ($didNotCameQuery) {
+                          $didNotCameQuery->where('did_not_came', false)->orWhereNull('did_not_came');
                       })
                       ->whereRaw("STR_TO_DATE(CONCAT(date, ' ', time), '%Y-%m-%d %H:%i:%s') > ?", [$currentTime]);
                   });

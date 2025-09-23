@@ -23,12 +23,14 @@ class Booking extends Model
         'secondary_employer_id',
         'requested_secondary',
         'secondary_duration',
-        'came'
+        'came',
+        'did_not_came'
     ];
 
     protected $casts = [
         'date' => 'datetime',
         'came' => 'boolean',
+        'did_not_came' => 'boolean',
     ];
 
     public function client()
