@@ -9,6 +9,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\EmployerController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\StatsController;
+use App\Http\Controllers\PublicBookingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +21,14 @@ use App\Http\Controllers\StatsController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+// Public booking routes (no authentication required)
+Route::prefix('public')->group(function () {
+    Route::get('/services', [PublicBookingController::class, 'getServices']);
+    Route::get('/employers', [PublicBookingController::class, 'getEmployers']);
+    Route::get('/available-slots', [PublicBookingController::class, 'getAvailableSlots']);
+    Route::post('/bookings', [PublicBookingController::class, 'createBooking']);
+});
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', function (Request $request) {
