@@ -14,6 +14,44 @@ use Carbon\Carbon;
 class PublicBookingController extends Controller
 {
     /**
+     * Normalize phone number to a consistent format
+     * Removes spaces, dashes, and parentheses
+     * Converts to international format with +30 prefix for Greek numbers
+     */
+    private function normalizePhoneNumber($phone)
+    {
+        // Remove all spaces, dashes, parentheses, and other non-digit characters except +
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+        
+        // If it starts with 00, replace with +
+        if (substr($phone, 0, 2) === '00') {
+            $phone = '+' . substr($phone, 2);
+        }
+        
+        // If it starts with +30, keep it as is
+        if (substr($phone, 0, 3) === '+30') {
+            return $phone;
+        }
+        
+        // If it starts with 30, add +
+        if (substr($phone, 0, 2) === '30') {
+            return '+' . $phone;
+        }
+        
+        // If it starts with 6 or 2 and is 10 digits (Greek mobile/landline), add +30
+        if (preg_match('/^[62]\d{9}$/', $phone)) {
+            return '+30' . $phone;
+        }
+        
+        // If it doesn't start with +, assume it needs +30 prefix (Greek number)
+        if (substr($phone, 0, 1) !== '+') {
+            return '+30' . $phone;
+        }
+        
+        return $phone;
+    }
+    
+    /**
      * Get all active services for public booking
      */
     public function getServices()
@@ -176,15 +214,18 @@ class PublicBookingController extends Controller
             'cost' => 'required|numeric',
         ]);
 
-        // Find or create client
-        $client = Client::where('telephone', $request->telephone)
+        // Normalize the phone number
+        $normalizedPhone = $this->normalizePhoneNumber($request->telephone);
+
+        // Find or create client using normalized phone
+        $client = Client::where('telephone', $normalizedPhone)
             ->first();
 
         if (!$client) {
             $client = Client::create([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
-                'telephone' => $request->telephone,
+                'telephone' => $normalizedPhone,
                 'email' => $request->email,
                 'address' => $request->address,
                 'comments' => $request->comments,
